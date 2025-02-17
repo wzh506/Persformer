@@ -146,3 +146,5 @@ test.png
 models/ops/build
 models/ops/dist
 *.egg-info
+
+tf_efficientnet_b7_ns-1dbc32de.pth
