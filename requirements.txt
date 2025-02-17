@@ -15,3 +15,5 @@ gdown==4.4.0
 ortools==9.2.9972
 geffnet==1.0.2
 tensorboardX==2.5
+# numpy 1.26.3安装会报错
+# protocol报错

@@ -26,9 +26,9 @@ def main():
     args = parser.parse_args()
 
     # specify dataset and model config
-    # persformer_apollo.config(args)
+    persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py
     # persformer_once.config(args)
-    persformer_openlane.config(args)
+    # persformer_openlane.config(args)
     # initialize distributed data parallel set
     ddp_init(args)
     # define runner to begin training or evaluation
