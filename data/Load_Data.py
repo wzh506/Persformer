@@ -79,9 +79,9 @@ class LaneDataset(Dataset):
         self.h_crop = args.crop_y
         # bev ipm pv
         # parameters related to service network
-        self.h_net = args.resize_h
+        self.h_net = args.resize_h #网络输入使用到的图片大小
         self.w_net = args.resize_w
-        self.ipm_h = args.ipm_h
+        self.ipm_h = args.ipm_h #
         self.ipm_w = args.ipm_w
         self.u_ratio = float(self.w_net) / float(self.w_org)
         self.v_ratio = float(self.h_net) / float(self.h_org - self.h_crop)
@@ -95,14 +95,14 @@ class LaneDataset(Dataset):
         self.strip_size = self.h_net / self.n_strips
         self.offsets_ys = np.arange(self.h_net, -1, -self.strip_size)
 
-        self.K = args.K
-        self.H_crop = homography_crop_resize([args.org_h, args.org_w], args.crop_y, [args.resize_h, args.resize_w])
-        # transformation from ipm to ground region
+        self.K = args.K #采用的方法叫做对应点对单应变换方法，需要四个对应点对,ipm图像上的四个点. 下面crop_y=0,表示前进方向不裁剪
+        self.H_crop = homography_crop_resize([args.org_h, args.org_w], args.crop_y, [args.resize_h, args.resize_w])#裁剪矩阵,去除车头部分的道路区域
+        # transformation from ipm to ground region 单应性矩阵 IPM和地面区域有什么区别）IPM是图像像素坐标,round其实就是bev平面
         self.H_ipm2g = cv2.getPerspectiveTransform(np.float32([[0, 0],
                                                                [self.ipm_w-1, 0],
                                                                [0, self.ipm_h-1],
                                                                [self.ipm_w-1, self.ipm_h-1]]),
-                                                   np.float32(args.top_view_region))
+                                                   np.float32(args.top_view_region))#IPM图像(BEV坐标)到地面区域的变换矩阵,这两个都是平面
         self.H_g2ipm = np.linalg.inv(self.H_ipm2g)
         # self.H_g2ipm = np.linalg.inv(H_ipm2g)
 
@@ -716,11 +716,11 @@ class LaneDataset(Dataset):
             _label_image_path, _label_cam_height, _label_cam_pitch, cam_extrinsics, cam_intrinsics, \
                 _label_laneline, _label_laneline_org, _gt_laneline_visibility, _gt_laneline_category, \
                 _gt_laneline_category_org, _laneline_ass_id = self.preprocess_data_from_json_once(idx_json_file)
-        elif 'apollo' in self.dataset_name:
+        elif 'apollo' in self.dataset_name:#apollo的数据集很简单,根本不需要处理,下面的都是一张图,没有batch
             _label_image_path = self._label_image_path[idx]
             _label_cam_height = self._label_cam_height_all[idx]
             _label_cam_pitch = self._label_cam_pitch_all[idx]
-            _label_laneline = self._label_laneline_all[idx]
+            _label_laneline = self._label_laneline_all[idx] #只有uv坐标,可能是转换到了地面坐标系了
             _label_laneline_org = self._label_laneline_all_org[idx]
             _gt_laneline_visibility = self._gt_laneline_visibility_all[idx]
             _gt_laneline_category = np.ones_like(self._gt_laneline_category_all[idx])
@@ -728,7 +728,7 @@ class LaneDataset(Dataset):
             _laneline_ass_id = self._laneline_ass_ids[idx]
 
             cam_intrinsics = self.K
-            cam_extrinsics = np.zeros((3,4))
+            cam_extrinsics = np.zeros((3,4))#这里和俯仰角没有关系吗??
             cam_extrinsics[2,3] = _label_cam_height #那BEV和相机光心就差一个高度
             idx_json_file = _label_image_path.replace('images', 'labels').replace('jpg', 'txt')
 
@@ -792,7 +792,7 @@ class LaneDataset(Dataset):
         image = F.resize(image, size=(self.h_net, self.w_net), interpolation=InterpolationMode.BILINEAR)
 
         gt_anchor = np.zeros([self.anchor_num, self.num_types, self.anchor_dim], dtype=np.float32)
-        gt_anchor[:, :, self.anchor_dim - self.num_category] = 1.0
+        gt_anchor[:, :, self.anchor_dim - self.num_category] = 1.0 #这是论文中anchor产生的细节,暂时可以不用管
         gt_lanes = _label_laneline
         gt_vis_inds = _gt_laneline_visibility
         # gt_laneline_img = self._gt_laneline_im_all[idx]
@@ -836,12 +836,12 @@ class LaneDataset(Dataset):
         intrinsics = torch.from_numpy(intrinsics)
         extrinsics = torch.from_numpy(extrinsics)
 
-        # prepare binary segmentation label map
-        seg_label = np.zeros((self.h_net, self.w_net), dtype=np.int8)
-        gt_lanes = _label_laneline_org
+        # prepare binary segmentation label map 这数据处理已经要人老命了
+        seg_label = np.zeros((self.h_net, self.w_net), dtype=np.int8)#输入网络的还是不一样的
+        gt_lanes = _label_laneline_org#3D 
         gt_laneline_img = [0] * len(gt_lanes)
         for i, lane in enumerate(gt_lanes):
-            # project lane3d to image
+            # project lane3d to image 这个其实好弄,就是把相机坐标系投影到图像坐标系,也就是一个位姿矩阵的计算问题
             if self.no_3d:
                 x_2d = lane[:, 0]
                 y_2d = lane[:, 1]
@@ -870,14 +870,14 @@ class LaneDataset(Dataset):
                                      color=np.ndarray.item(np.array([1])))
         seg_label = torch.from_numpy(seg_label.astype(np.float32))
         seg_label.unsqueeze_(0)
-
+        #保存为一张图片看看
         if len(gt_lanes) > self.max_lanes:
             print(img_name + " has over {} lanes".format(self.max_lanes))
             gt_laneline_img = gt_laneline_img[:self.max_lanes]
         gt_laneline_img = self.transform_annotation(gt_laneline_img, gt_category_2d, img_wh=(self.w_net, self.h_net))
-        gt_laneline_img = torch.from_numpy(gt_laneline_img.astype(np.float32))
+        gt_laneline_img = torch.from_numpy(gt_laneline_img.astype(np.float32)) #这个后续再注意一下
         # gt_centerline_img = self.transform_annotation(gt_centerline_img, img_wh=(self.w_net, self.h_net))
-
+        #调整到最大值
         if self.seg_bev:
             gt_anchor_bev = np.copy(gt_anchor)
             unormalize_lane_anchor(gt_anchor_bev, self)
@@ -949,7 +949,7 @@ class LaneDataset(Dataset):
                 if 'category' in info_dict:
                     gt_laneline_category = info_dict['category']
                     gt_laneline_category_all.append(np.array(gt_laneline_category, dtype=np.int32))
-                else:
+                else: #apollo那个数据集就是全部设置为1(那就是根本不预测车道线的种类)
                     gt_laneline_category_all.append(np.ones(len(gt_lane_pts), dtype=np.int32))
 
                 if not self.no_centerline:

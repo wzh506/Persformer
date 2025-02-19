@@ -184,15 +184,15 @@ class Runner:
             end = time.time()
             # Start training loop
             for i, (json_files, input, seg_maps, gt, gt_laneline_img, idx, gt_hcam, gt_pitch, gt_intrinsic, gt_extrinsic, aug_mat, seg_name, seg_bev_map) in tqdm(enumerate(train_loader)):
-                # Time dataloader
-
+                # Time dataloader 图片，分割图，
+                # 虚拟相机的内外参是预设相机参数获得的
                 data_time.update(time.time() - end)
                 # Put inputs on gpu if possible
                 if not args.no_cuda:
                     input, gt = input.cuda(non_blocking=True), gt.cuda(non_blocking=True)
                     seg_maps = seg_maps.cuda(non_blocking=True)
-                    gt_hcam = gt_hcam.cuda()
-                    gt_pitch = gt_pitch.cuda()
+                    gt_hcam = gt_hcam.cuda()#相机的高度 对应h
+                    gt_pitch = gt_pitch.cuda()#相机的俯视角,对应旋转角？
                     gt_intrinsic = gt_intrinsic.cuda()
                     gt_extrinsic = gt_extrinsic.cuda()
                     gt_laneline_img = gt_laneline_img.cuda()

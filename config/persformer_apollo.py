@@ -138,7 +138,7 @@ def sim3d_config(args):
     args.fix_cam = False
     args.pred_cam = False
 
-    # set camera parameters for the test datasets
+    # set camera parameters for the test datasets 2015是focal,不知道怎么获得的
     args.K = np.array([[2015., 0., 960.],
                        [0., 2015., 540.],
                        [0., 0., 1.]]) #这个东西怎么算出来的？
@@ -163,7 +163,7 @@ def sim3d_config(args):
 
 def openlane_config(args):
     # set dataset parameters
-    args.org_h = 1280
+    args.org_h = 1280 #原始图片大小
     args.org_w = 1920
     args.crop_y = 0
     args.no_centerline = True
