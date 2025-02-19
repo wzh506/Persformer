@@ -1,7 +1,42 @@
 1.训练代码
-python -m torch.distributed.launch --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=8 --nepochs=100
-torchrun --nproc_per_node 2 --nnodes=1 --node_rank=0  main_persformer.py --mod=PersFormer --batch_size=8 --nepochs=100
+python -m torch.distributed.launch --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=32 --nepochs=100 --resume /home/zhaohui1.wang/mal/github/PersFormer_3DLane/data_splits/apollo/PersFormer
+torchrun --nproc_per_node 2 --nnodes=1 --node_rank=0  main_persformer.py --mod=PersFormer --batch_size=32 --nepochs=100
 单gpu调试：
 python  main_persformer.py --mod=PersFormer --batch_size=8 --nepochs=100
 s
 Downloading: "https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_b7_ns-1dbc32de.pth" to /home/zhaohui1.wang/.cache/torch/hub/checkpoints/tf_efficientnet_b7_ns-1dbc32de.pth
+3.vscode配置如下
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PersFormer分布式训练",
+            "type": "python",
+            "request": "launch",
+            "program": "-m",
+            "args": [
+                "torch.distributed.launch",
+                "--nproc_per_node=1",
+                // "--nnodes=1",
+                // "--node_rank=0",
+                // "--master_addr=127.0.0.1",
+                // "--master_port=29500",
+                "main_persformer.py",
+                "--mod=PersFormer",
+                "--batch_size=8",
+                "--nepochs=100"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0", // 指定使用的GPU，仅调试一个py文件
+                // "NCCL_DEBUG": "INFO",         // 启用NCCL日志
+                // "NCCL_SOCKET_IFNAME": "eth0"  // 网络接口指定
+            }
+        }
+    ]
+}
+4.torch2.0以上可以运行,需要注意local-rank和local_rank两者的区别
+5.evaluate
+python -m torch.distributed.launch --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=32
+切换数据集是通过Main函数中替换persformer_xx函数的方法实现的,同时还得设置evaluate = true

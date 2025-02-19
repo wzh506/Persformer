@@ -77,7 +77,7 @@ class LaneDataset(Dataset):
         self.h_org = args.org_h
         self.w_org = args.org_w
         self.h_crop = args.crop_y
-
+        # bev ipm pv
         # parameters related to service network
         self.h_net = args.resize_h
         self.w_net = args.resize_w
@@ -729,7 +729,7 @@ class LaneDataset(Dataset):
 
             cam_intrinsics = self.K
             cam_extrinsics = np.zeros((3,4))
-            cam_extrinsics[2,3] = _label_cam_height
+            cam_extrinsics[2,3] = _label_cam_height #那BEV和相机光心就差一个高度
             idx_json_file = _label_image_path.replace('images', 'labels').replace('jpg', 'txt')
 
         if self.dataset_name in ['openlane', 'once']:
@@ -980,7 +980,7 @@ class LaneDataset(Dataset):
         anchor_angles = None
         if not self.use_default_anchor:
             # calculate 2D anchor location by projecting 3D anchor
-            # Non-perfect method: use fixed camera parameter to ensure fixed anchor on both 2D and 3D
+            # Non-perfect method: use fixed camera parameter to ensure fixed anchor on both 2D and 3D 作为初始化anchor的工具，初始位置就比较准
             mean_cam_height = np.mean(gt_cam_height_all)
             mean_cam_pitch = np.mean(gt_cam_pitch_all)
             print("mean_cam_height {}, mean_cam_pitch {}".format(mean_cam_height, mean_cam_pitch))
@@ -2552,7 +2552,7 @@ def get_loader(transformed_dataset, args):
                                 num_workers=args.nworkers, pin_memory=True,
                                 persistent_workers=True,
                                 worker_init_fn=seed_worker,
-                                generator=g)
+                                generator=g) #把dataset封装为DataLoader
 
     if args.dist:
         return data_loader, data_sampler

@@ -141,7 +141,7 @@ def sim3d_config(args):
     # set camera parameters for the test datasets
     args.K = np.array([[2015., 0., 960.],
                        [0., 2015., 540.],
-                       [0., 0., 1.]])
+                       [0., 0., 1.]]) #这个东西怎么算出来的？
 
     # specify model settings
     """

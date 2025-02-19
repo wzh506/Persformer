@@ -686,7 +686,7 @@ class Runner:
 
         elif 'once' in args.dataset_name:
             train_dataset = LaneDataset(args.dataset_dir, ops.join(args.data_dir, 'train/'), args, data_aug=True, save_std=True, seg_bev=args.seg_bev)
-        else:
+        else: #apollo数据集
             train_dataset = LaneDataset(args.dataset_dir, ops.join(args.data_dir, 'train.json'), args, data_aug=True, save_std=True, seg_bev=args.seg_bev)
             train_dataset.normalize_lane_label()
         train_loader, train_sampler = get_loader(train_dataset, args)
