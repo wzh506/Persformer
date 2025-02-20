@@ -1025,7 +1025,7 @@ class LaneDataset(Dataset):
             # fetch camera height and pitch
             gt_cam_height = gt_cam_height_all[idx]
             gt_cam_pitch = gt_cam_pitch_all[idx]
-            if not self.fix_cam:
+            if not self.fix_cam: 
                 P_g2im = projection_g2im(gt_cam_pitch, gt_cam_height, self.K)
                 H_g2im = homograpthy_g2im(gt_cam_pitch, gt_cam_height, self.K)
                 H_im2g = np.linalg.inv(H_g2im)
@@ -1033,7 +1033,7 @@ class LaneDataset(Dataset):
                 P_g2im = self.P_g2im
                 H_im2g = self.H_im2g
             P_g2gflat = np.matmul(H_im2g, P_g2im)
-
+            # 同样是单应性矩阵
             gt_lanes = gt_laneline_pts_all[idx]
             gt_visibility = gt_laneline_visibility_all[idx]
             gt_category = gt_laneline_category_all[idx]
@@ -1055,7 +1055,7 @@ class LaneDataset(Dataset):
             gt_lanes = [prune_3d_lane_by_range(gt_lane, 3*self.x_min, 3*self.x_max) for gt_lane in gt_lanes]
             gt_lanes = [lane for lane in gt_lanes if lane.shape[0] > 1]
 
-            # convert 3d lanes to flat ground space
+            # convert 3d lanes to flat ground space (也就是BEV平面，但是目前还没有去掉高度信息)
             self.convert_lanes_3d_to_gflat(gt_lanes, P_g2gflat)
 
             gt_anchors = []
@@ -1067,7 +1067,7 @@ class LaneDataset(Dataset):
                 # convert gt label to anchor label
                 # consider individual out-of-range interpolation still visible
                 ass_id, x_off_values, z_values, visibility_vec = self.convert_label_to_anchor(gt_lanes[i], H_im2g)
-                if ass_id >= 0:
+                if ass_id >= 0: #对应论文中的（5，10，15，20，。。。，100）单位是m,是IPM/BEV的y轴采样
                     gt_anchors.append(np.vstack([x_off_values, z_values]).T)
                     ass_ids.append(ass_id)
                     visibility_vectors.append(visibility_vec)
@@ -2186,7 +2186,7 @@ class LaneDataset(Dataset):
             # compute offset values
             x_off_values = x_values - self.anchor_x_steps[ass_id]
         else:
-            if not self.new_match:
+            if not self.new_match:#
                 # decide association at visible offset locations
                 ass_id = np.argmin(np.linalg.norm(np.multiply(self.anchor_grid_x - x_values, visibility_vec), axis=1))
                 # compute offset values
