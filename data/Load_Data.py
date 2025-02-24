@@ -151,7 +151,7 @@ class LaneDataset(Dataset):
             
             # compute anchor grid with different far center points
             # currently, anchor grid consists of [center, left-sheared, right-sheared] concatenated
-            self.anchor_num = self.anchor_num_before_shear * 7
+            self.anchor_num = self.anchor_num_before_shear * 7 #从-10到10的采样，repeat是相同的
             self.anchor_grid_x = np.repeat(np.expand_dims(self.anchor_x_steps, axis=1), self.num_y_steps, axis=1)  # center
             anchor_grid_y = np.repeat(np.expand_dims(self.anchor_y_steps, axis=0), self.anchor_num_before_shear, axis=0)
             
@@ -718,7 +718,7 @@ class LaneDataset(Dataset):
                 _gt_laneline_category_org, _laneline_ass_id = self.preprocess_data_from_json_once(idx_json_file)
         elif 'apollo' in self.dataset_name:#apollo的数据集很简单,根本不需要处理,下面的都是一张图,没有batch
             _label_image_path = self._label_image_path[idx]
-            _label_cam_height = self._label_cam_height_all[idx]
+            _label_cam_height = self._label_cam_height_all[idx]#这个高度和pit
             _label_cam_pitch = self._label_cam_pitch_all[idx]
             _label_laneline = self._label_laneline_all[idx] #只有uv坐标,可能是转换到了地面坐标系了
             _label_laneline_org = self._label_laneline_all_org[idx]
@@ -790,10 +790,10 @@ class LaneDataset(Dataset):
         # image preprocess with crop and resize
         image = F.crop(image, self.h_crop, 0, self.h_org-self.h_crop, self.w_org)
         image = F.resize(image, size=(self.h_net, self.w_net), interpolation=InterpolationMode.BILINEAR)
-
+        #help='number of lane category, including background=self.num_category
         gt_anchor = np.zeros([self.anchor_num, self.num_types, self.anchor_dim], dtype=np.float32)
         gt_anchor[:, :, self.anchor_dim - self.num_category] = 1.0 #这是论文中anchor产生的细节,暂时可以不用管
-        gt_lanes = _label_laneline
+        gt_lanes = _label_laneline #(112, 1, 32),不含中心线，self.num_types=1，32-2
         gt_vis_inds = _gt_laneline_visibility
         # gt_laneline_img = self._gt_laneline_im_all[idx]
         gt_category_2d = _gt_laneline_category_org
@@ -853,27 +853,27 @@ class LaneDataset(Dataset):
                     M = np.matmul(aug_mat, M)
                 x_2d, y_2d = homographic_transformation(M, x_2d, y_2d)
                 gt_laneline_img[i] = np.array([x_2d, y_2d]).T.tolist()
-            else:
+            else:#这里这个外参是相机光心到地面，这里这个ground是全局的3D
                 H_g2im, P_g2im, H_crop, H_im2ipm = self.transform_mats_impl(cam_extrinsics, \
-                                                    cam_intrinsics, _label_cam_pitch, _label_cam_height)
+                                                    cam_intrinsics, _label_cam_pitch, _label_cam_height) #
                 M = np.matmul(H_crop, P_g2im)
                 # update transformation with image augmentation
                 if self.data_aug:
                     M = np.matmul(aug_mat, M)
 
                 x_2d, y_2d = projective_transformation(M, lane[:, 0],
-                                                       lane[:, 1], lane[:, 2])
-                gt_laneline_img[i] = np.array([x_2d, y_2d]).T.tolist()
+                                                       lane[:, 1], lane[:, 2])#这个lane还是3D坐标系中的
+                gt_laneline_img[i] = np.array([x_2d, y_2d]).T.tolist()#搞到2d图像片面上，就是u,v,懂？
             for j in range(len(x_2d) - 1):
                 seg_label = cv2.line(seg_label,
                                      (int(x_2d[j]), int(y_2d[j])), (int(x_2d[j+1]), int(y_2d[j+1])),
-                                     color=np.ndarray.item(np.array([1])))
-        seg_label = torch.from_numpy(seg_label.astype(np.float32))
+                                     color=np.ndarray.item(np.array([1])))#在seg_label上绘图
+        seg_label = torch.from_numpy(seg_label.astype(np.float32))#所以seg_label是原始图像带有缩小和裁剪后的结果
         seg_label.unsqueeze_(0)
-        #保存为一张图片看看
+        #保存为一张图片看看,名称：seg_label2.jpg
         if len(gt_lanes) > self.max_lanes:
             print(img_name + " has over {} lanes".format(self.max_lanes))
-            gt_laneline_img = gt_laneline_img[:self.max_lanes]
+            gt_laneline_img = gt_laneline_img[:self.max_lanes]#2D label,
         gt_laneline_img = self.transform_annotation(gt_laneline_img, gt_category_2d, img_wh=(self.w_net, self.h_net))
         gt_laneline_img = torch.from_numpy(gt_laneline_img.astype(np.float32)) #这个后续再注意一下
         # gt_centerline_img = self.transform_annotation(gt_centerline_img, img_wh=(self.w_net, self.h_net))
@@ -892,7 +892,7 @@ class LaneDataset(Dataset):
                 # print(type(aug_mat))  <class 'numpy.ndarray'>
                 return idx_json_file, image, seg_label, gt_anchor, gt_laneline_img, idx, gt_cam_height, gt_cam_pitch, intrinsics, extrinsics, aug_mat, seg_name, seg_bev_map
             return idx_json_file, image, seg_label, gt_anchor, gt_laneline_img, idx, gt_cam_height, gt_cam_pitch, intrinsics, extrinsics, seg_name, seg_bev_map
-        else:
+        else:#        
             if self.data_aug:
                 aug_mat = torch.from_numpy(aug_mat.astype(np.float32))
                 return idx_json_file, image, seg_label, gt_anchor, gt_laneline_img, idx, gt_cam_height, gt_cam_pitch, intrinsics, extrinsics, aug_mat, seg_name, 0
@@ -978,7 +978,7 @@ class LaneDataset(Dataset):
 
         anchor_origins = None
         anchor_angles = None
-        if not self.use_default_anchor:
+        if not self.use_default_anchor:#甚至可以use default
             # calculate 2D anchor location by projecting 3D anchor
             # Non-perfect method: use fixed camera parameter to ensure fixed anchor on both 2D and 3D 作为初始化anchor的工具，初始位置就比较准
             mean_cam_height = np.mean(gt_cam_height_all)
@@ -2338,12 +2338,12 @@ class LaneDataset(Dataset):
             # lanes[lane_idx, 3] = xs_inside_image[0]
             # lanes[lane_idx, 4] = len(xs_inside_image)
             # lanes[lane_idx, 5:5 + len(all_xs)] = all_xs
-            
-            lanes[lane_idx, 0] = 0
-            lanes[lane_idx, category[lane_idx]] = 1
-            lanes[lane_idx, self.num_category] = len(xs_outside_image) / self.n_strips
-            lanes[lane_idx, self.num_category + 1] = xs_inside_image[0]
-            lanes[lane_idx, self.num_category + 2 : self.num_category + 2 + len(all_xs)] = all_xs
+            # y方向采样71个点，获得对应的x坐标？
+            lanes[lane_idx, 0] = 0 #有线
+            lanes[lane_idx, category[lane_idx]] = 1 #表示lane的type维度向量
+            lanes[lane_idx, self.num_category] = len(xs_outside_image) / self.n_strips  
+            lanes[lane_idx, self.num_category + 1] = xs_inside_image[0] #
+            lanes[lane_idx, self.num_category + 2 : self.num_category + 2 + len(all_xs)] = all_xs #记录xs！2D的坐标，是图像平面的
             # print("extrap_ys_length: ", extrap_ys_length)
             # print("len of xs_inside_image: ", len(xs_inside_image))
             lanes[lane_idx, self.num_category + 2 + self.n_offsets + extrap_ys_length: 
