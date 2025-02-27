@@ -96,10 +96,10 @@ class PersFormer(nn.Module):
                                                             args._2d_reg_loss_weight,
                                                             args._seg_loss_weight]), requires_grad=True)
         self._initialize_weights(args)
-
+    #只需要：图像数据，透视变换矩阵（图像平面到IPM平面的变换矩阵，这个矩阵只是初始值）
     def forward(self, input, _M_inv = None):
-        out_featList = self.encoder(input)
-        neck_out = self.neck(out_featList[0])
+        out_featList = self.encoder(input)#对应论文图中的backbone
+        neck_out = self.neck(out_featList[0])#特征图只有一个尺度（不对劲）
         frontview_features = self.shared_encoder(neck_out)
         '''
             frontview_features_0 size: torch.Size([4, 128, 180, 240])
@@ -107,9 +107,9 @@ class PersFormer(nn.Module):
             frontview_features_2 size: torch.Size([4, 512, 45, 60])
             frontview_features_3 size: torch.Size([4, 512, 22, 30])
         '''
-        frontview_final_feat = frontview_features[-1]
+        frontview_final_feat = frontview_features[-1] #获得最后一维的特征尺度
 
-        laneatt_proposals_list = self.laneatt_head(frontview_final_feat)
+        laneatt_proposals_list = self.laneatt_head(frontview_final_feat) #这一步即可获得一个2D Lane的预测结果
 
         projs = self.pers_tr(input, frontview_features, _M_inv)
         '''

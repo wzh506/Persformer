@@ -188,7 +188,7 @@ class Runner:
                 # 虚拟相机的内外参是预设相机参数获得的
                 data_time.update(time.time() - end)
                 # Put inputs on gpu if possible
-                if not args.no_cuda:
+                if not args.no_cuda:#gt其实是gt_anchor
                     input, gt = input.cuda(non_blocking=True), gt.cuda(non_blocking=True)
                     seg_maps = seg_maps.cuda(non_blocking=True)
                     gt_hcam = gt_hcam.cuda()#相机的高度 对应h
@@ -202,7 +202,7 @@ class Runner:
                 # print("gt_laneline_img: ", gt_laneline_img, torch.isnan(gt_laneline_img).any())
 
                 # update transformation based on gt extrinsic/intrinsic
-                if args.dataset_name == 'apollo':
+                if args.dataset_name == 'apollo':#这里获得的是单应性矩阵，从相机平面到IPM平面的
                     M_inv, _, _ = unit_update_projection(args, gt_hcam, gt_pitch)
                 else:
                     M_inv = unit_update_projection_extrinsic(args, gt_extrinsic, gt_intrinsic)
@@ -212,7 +212,7 @@ class Runner:
                 # Run model
                 optimizer.zero_grad()
                 if args.model_name == "PersFormer":
-                    # Inference model
+                    # Inference model 前向传播过程
                     laneatt_proposals_list, output_net, pred_hcam, pred_pitch, pred_seg_bev_map, uncertainty_loss = model(input=input, _M_inv=M_inv)
 
                     # 3D loss

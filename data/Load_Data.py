@@ -151,9 +151,9 @@ class LaneDataset(Dataset):
             
             # compute anchor grid with different far center points
             # currently, anchor grid consists of [center, left-sheared, right-sheared] concatenated
-            self.anchor_num = self.anchor_num_before_shear * 7 #从-10到10的采样，repeat是相同的
-            self.anchor_grid_x = np.repeat(np.expand_dims(self.anchor_x_steps, axis=1), self.num_y_steps, axis=1)  # center
-            anchor_grid_y = np.repeat(np.expand_dims(self.anchor_y_steps, axis=0), self.anchor_num_before_shear, axis=0)
+            self.anchor_num = self.anchor_num_before_shear * 7 #从-10到10的采样有16个采样点；7是7个不同的角度
+            self.anchor_grid_x = np.repeat(np.expand_dims(self.anchor_x_steps, axis=1), self.num_y_steps, axis=1)  # center,代表角度pi/2
+            anchor_grid_y = np.repeat(np.expand_dims(self.anchor_y_steps, axis=0), self.anchor_num_before_shear, axis=0) #也是16，10
             
             x2y_ratio = self.x_min / (self.y_max - self.y_min)  # x change per unit y change (for left-sheared anchors)
             anchor_grid_x_left_10 = (anchor_grid_y - self.y_min) * x2y_ratio + self.anchor_grid_x
@@ -167,7 +167,7 @@ class LaneDataset(Dataset):
             anchor_grid_x_left_40 = (anchor_grid_y - self.y_min) * x2y_ratio + self.anchor_grid_x
             # right-sheared anchors are symmetrical to left-sheared ones
             anchor_grid_x_right_40 = np.flip(-anchor_grid_x_left_40, axis=0)
-            # concat the three parts
+            # concat the three parts 
             self.anchor_grid_x = np.concatenate((self.anchor_grid_x, 
                                                 anchor_grid_x_left_10, anchor_grid_x_right_10,
                                                 anchor_grid_x_left_20, anchor_grid_x_right_20,
@@ -809,7 +809,7 @@ class LaneDataset(Dataset):
             z_values = gt_lanes[i][:, 1]
             visibility = gt_vis_inds[i]
             # assign anchor tensor values
-            gt_anchor[ass_id, 0, 0: self.num_y_steps] = x_off_values
+            gt_anchor[ass_id, 0, 0: self.num_y_steps] = x_off_values #不同线共用ass_id不就会出问题了吗
             if not self.no_3d:
                 gt_anchor[ass_id, 0, self.num_y_steps:2*self.num_y_steps] = z_values
                 gt_anchor[ass_id, 0, 2*self.num_y_steps:3*self.num_y_steps] = visibility
@@ -877,11 +877,11 @@ class LaneDataset(Dataset):
         gt_laneline_img = self.transform_annotation(gt_laneline_img, gt_category_2d, img_wh=(self.w_net, self.h_net))
         gt_laneline_img = torch.from_numpy(gt_laneline_img.astype(np.float32)) #这个后续再注意一下
         # gt_centerline_img = self.transform_annotation(gt_centerline_img, img_wh=(self.w_net, self.h_net))
-        #调整到最大值
+        #调整到最大值,gt_anchor的数据都是在bev坐标中处理的
         if self.seg_bev:
             gt_anchor_bev = np.copy(gt_anchor)
             unormalize_lane_anchor(gt_anchor_bev, self)
-            seg_bev_map = np.zeros((self.ipm_h, self.ipm_w), dtype=np.int8)
+            seg_bev_map = np.zeros((self.ipm_h, self.ipm_w), dtype=np.int8) #但是如果地面不平整的话这个就会缺乏补偿
             seg_bev_map = self.draw_on_ipm_seg_bev(seg_bev_map, gt_anchor_bev, width=self.lane_width)
             seg_bev_map = torch.from_numpy(seg_bev_map.astype(np.float32))
             seg_bev_map.unsqueeze_(0)
@@ -1009,7 +1009,7 @@ class LaneDataset(Dataset):
                     bottom_angles.append(angle_deg)
             anchor_origins = [np.array(left_orig), np.array(right_orig), np.array(bottom_orig)]
             anchor_angles = [np.array(left_angles), np.array(right_angles), np.array(bottom_angles)]
-
+        #这里如何出现角度和方向？？
         # convert labeled laneline to anchor format
         gt_laneline_ass_ids = []
         gt_centerline_ass_ids = []
@@ -1065,7 +1065,7 @@ class LaneDataset(Dataset):
             for i in range(len(gt_lanes)):
 
                 # convert gt label to anchor label
-                # consider individual out-of-range interpolation still visible
+                # consider individual out-of-range interpolation still visible #gt_lanes这里还是label的3D点
                 ass_id, x_off_values, z_values, visibility_vec = self.convert_label_to_anchor(gt_lanes[i], H_im2g)
                 if ass_id >= 0: #对应论文中的（5，10，15，20，。。。，100）单位是m,是IPM/BEV的y轴采样
                     gt_anchors.append(np.vstack([x_off_values, z_values]).T)
@@ -2138,7 +2138,7 @@ class LaneDataset(Dataset):
                  x_off_values: current lane's x offset from it associated anchor column
                  z_values: current lane's z value in ground coordinates
         """
-        if self.no_3d:  # For ground-truth in 2D image coordinates (TuSimple)
+        if self.no_3d:  # For ground-truth in 2D image coordinates (TuSimple) #本来就只有2D标注
             gt_lane_2d = laneline_gt
             # project to ground coordinates
             gt_lane_grd_x, gt_lane_grd_y = homographic_transformation(H_im2g, gt_lane_2d[:, 0], gt_lane_2d[:, 1])
@@ -2187,7 +2187,7 @@ class LaneDataset(Dataset):
             x_off_values = x_values - self.anchor_x_steps[ass_id]
         else:
             if not self.new_match:#
-                # decide association at visible offset locations
+                # decide association at visible offset locations#同一个
                 ass_id = np.argmin(np.linalg.norm(np.multiply(self.anchor_grid_x - x_values, visibility_vec), axis=1))
                 # compute offset values
                 x_off_values = x_values - self.anchor_grid_x[ass_id]

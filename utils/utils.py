@@ -761,7 +761,7 @@ def resample_laneline_in_y(input_lane, y_steps, out_vis=False):
     f_z = interp1d(input_lane[:, 1], input_lane[:, 2], fill_value="extrapolate")
 
     x_values = f_x(y_steps)
-    z_values = f_z(y_steps)
+    z_values = f_z(y_steps)#在对应的位置查出值
 
     if out_vis:
         output_visibility = np.logical_and(y_steps >= y_min, y_steps <= y_max)
