@@ -173,7 +173,7 @@ class RefPntsNoGradGenerator(nn.Module):
         """
         super().__init__()
         self.H, self.W = size_ipm
-        linear_points_W = torch.linspace(0, 1 - 1/self.W, self.W)
+        linear_points_W = torch.linspace(0, 1 - 1/self.W, self.W) #归一化的
         linear_points_H = torch.linspace(0, 1 - 1/self.H, self.H)
 
         self.base_grid = torch.zeros(self.H, self.W, 3)
@@ -187,8 +187,8 @@ class RefPntsNoGradGenerator(nn.Module):
 
     def forward(self, M):
         with torch.no_grad():
-            grid = torch.matmul(self.base_grid.view(self.H * self.W, 3), M.transpose(1, 2))
-            grid = torch.div(grid[:, :, 0:2], grid[:, :, 2:])
+            grid = torch.matmul(self.base_grid.view(self.H * self.W, 3), M.transpose(1, 2))#图像转换到IPM平面（所有坐标点）
+            grid = torch.div(grid[:, :, 0:2], grid[:, :, 2:])#相除，再次归一化
         return grid
 
 
@@ -343,7 +343,7 @@ class LanePredictionHead(nn.Module):
         if fmap_mapping_interp_index is not None and fmap_mapping_interp_weight is not None:
             self.use_default_anchor = False
             self.fmap_mapping_interp_index = torch.tensor(fmap_mapping_interp_index)
-            self.fmap_mapping_interp_weight = torch.tensor(fmap_mapping_interp_weight)
+            self.fmap_mapping_interp_weight = torch.tensor(fmap_mapping_interp_weight) #这个到底是怎么赋值的
             # if not no_cuda:
             #     self.fmap_mapping_interp_index = self.fmap_mapping_interp_index.cuda()
             #     self.fmap_mapping_interp_weight = self.fmap_mapping_interp_weight.cuda()
@@ -354,7 +354,7 @@ class LanePredictionHead(nn.Module):
             batch_size, channel, fmap_h, fmap_w = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
             sheared_feature_map = torch.zeros((batch_size, channel, fmap_h, fmap_w*6)).to(x.device)
             v_arange = torch.arange(fmap_h).unsqueeze(dim=1).repeat(1,fmap_w*6).to(x.device)
-            self.fmap_mapping_interp_index = self.fmap_mapping_interp_index.to(x.device)
+            self.fmap_mapping_interp_index = self.fmap_mapping_interp_index.to(x.device) #这个在Load_Data.py中有赋值，也是角度(6个角度，在xv附近偏移)
             self.fmap_mapping_interp_weight = self.fmap_mapping_interp_weight.to(x.device)
 
             for batch_idx, x_feature_map in enumerate(x):

@@ -126,7 +126,7 @@ class PersFormer(nn.Module):
 
         out = self.lane_out(bev_feat)
 
-        cam_height = self.cam_height.to(input.device)
+        cam_height = self.cam_height.to(input.device) # 这个不需要预测，直接使用
         cam_pitch = self.cam_pitch.to(input.device)
 
         pred_seg_bev_map = self.segment_head(projs[0])
@@ -263,32 +263,32 @@ class PerspectiveTransformer(nn.Module):
                 encoder_layers = EncoderLayer(d_model=uv_feat_c, dim_ff=uv_feat_c*2, num_levels=1, 
                                               num_points=self.npoints, num_heads=self.nhead)
                 self.el.append(encoder_layers)
-
+    
     def forward(self, input, frontview_features, _M_inv = None):
         projs = []
         for i in range(self.num_proj):
             if i == 0:
-                bev_h = self.bev_h
+                bev_h = self.bev_h  #bev的大小的都不一样,包含了transformer的所有方法
                 bev_w = self.bev_w
             else:
                 bev_h = bev_h // 2
                 bev_w = bev_w // 2
             bs, c, h, w = frontview_features[i].shape
-            query_embed = self.query_embeds[i].weight.unsqueeze(0).repeat(bs, 1, 1)
+            query_embed = self.query_embeds[i].weight.unsqueeze(0).repeat(bs, 1, 1) #3d的query
             src = frontview_features[i].flatten(2).permute(0, 2, 1)
             bev_mask = torch.zeros((bs, bev_h, bev_w), device=query_embed.device).to(query_embed.dtype)
             bev_pos = self.pe[i](bev_mask).to(query_embed.dtype)
             bev_pos = bev_pos.flatten(2).permute(0, 2, 1)
-            ref_2d = self.ref_2d[i].repeat(bs, 1, 1, 1).to(input.device)
-            ref_pnts = self.project_layers[i](_M_inv).unsqueeze(-2)
+            ref_2d = self.ref_2d[i].repeat(bs, 1, 1, 1).to(input.device) #input没有用上，只用了device
+            ref_pnts = self.project_layers[i](_M_inv).unsqueeze(-2) #这里用到了_M_inv
             input_spatial_shapes = self.input_spatial_shapes[i].to(input.device)
             input_level_start_index = self.input_level_start_index[i].to(input.device)
-            for j in range(self.num_att):
+            for j in range(self.num_att): #这里会经过好几次的encoder
                 query_embed = self.el[i*self.num_att+j](query=query_embed, value=src, bev_pos=bev_pos, 
-                                                        ref_2d = ref_2d, ref_3d=ref_pnts,
+                                                        ref_2d = ref_2d, ref_3d=ref_pnts,#为啥这两个维度一样啊（ref_3d可能显示设置为一个维度为0）
                                                         bev_h=bev_h, bev_w=bev_w, 
                                                         spatial_shapes=input_spatial_shapes,
-                                                        level_start_index=input_level_start_index)
+                                                        level_start_index=input_level_start_index) #这里就是Deformabel Attention
             query_embed = query_embed.permute(0, 2, 1).view(bs, c, bev_h, bev_w).contiguous()
             projs.append(query_embed)
         return projs

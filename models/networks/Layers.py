@@ -155,7 +155,7 @@ class EncoderLayer(nn.Module):
         # cross attention
         query = self.cross_attn(query,
                                 reference_points=ref_3d,
-                                input_flatten=value,
+                                input_flatten=value, #被交互的图片，是原本的Input Feature
                                 input_spatial_shapes=spatial_shapes,
                                 input_level_start_index=level_start_index)
         query = query + identity

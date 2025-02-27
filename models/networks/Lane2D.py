@@ -160,7 +160,7 @@ class LaneATTHead(nn.Module):
             self.right_angles = [108., 120., 131., 141., 150., 158.]
             self.bottom_angles = [165., 150., 141., 131., 120., 108., 100., 90., 80., 72., 60., 49., 39., 30., 15.]
             # Generate anchors
-            self.anchors, self.anchors_cut = self.generate_anchors(lateral_n=72, bottom_n=128)
+            self.anchors, self.anchors_cut = self.generate_anchors(lateral_n=72, bottom_n=128)#预测的anchor怎么来
 
         # Pre compute indices for the anchor pooling
         self.cut_zs, self.cut_ys, self.cut_xs, self.invalid_mask = self.compute_anchor_cut_indices(
@@ -181,18 +181,18 @@ class LaneATTHead(nn.Module):
     def forward(self, batch_features, conf_threshold=None, nms_thres=0, nms_topk=3000, eval=False):
         batch_features = self.conv1(batch_features)
         batch_anchor_features = self.cut_anchor_features(batch_features)
-
+        # 8张图片的Proposals放在一起了
         # Join proposals from all images into a single proposals features batch
         batch_anchor_features = batch_anchor_features.view(-1, self.anchor_feat_channels * self.fmap_h)
 
         # Move relevant tensors to device
         self.anchors = self.anchors.to(device=batch_features.device)
-
+        # 这里的注意力机制和transformer的注意力机制不太相同？
         # Add attention features
         softmax = nn.Softmax(dim=1)
         scores = self.attention_layer(batch_anchor_features)
         attention = softmax(scores).reshape(batch_features.shape[0], len(self.anchors), -1)
-        attention_matrix = torch.eye(attention.shape[1], device=batch_features.device).repeat(batch_features.shape[0], 1, 1)
+        attention_matrix = torch.eye(attention.shape[1], device=batch_features.device).repeat(batch_features.shape[0], 1, 1)#这里就是个qkv而已
         non_diag_inds = torch.nonzero(attention_matrix == 0., as_tuple=False)
         attention_matrix[:] = 0
         attention_matrix[non_diag_inds[:, 0], non_diag_inds[:, 1], non_diag_inds[:, 2]] = attention.flatten()
@@ -207,27 +207,27 @@ class LaneATTHead(nn.Module):
         cls_logits = self.cls_layer(batch_anchor_features)
         reg = self.reg_layer(batch_anchor_features)
 
-        # Undo joining
+        # Undo joining 按照batch把他们分开
         cls_logits = cls_logits.reshape(batch_features.shape[0], -1, cls_logits.shape[1])
         reg = reg.reshape(batch_features.shape[0], -1, reg.shape[1])
         sigmoid = nn.Sigmoid()
-        reg[:, :, self.n_offsets:] = sigmoid(reg[:, :, self.n_offsets:])
+        reg[:, :, self.n_offsets:] = sigmoid(reg[:, :, self.n_offsets:]) #处理到0-1之间，没有参数
 
         # Add offsets to anchors
         # reg_proposals = torch.zeros((*cls_logits.shape[:2], 5 + self.n_offsets), device=batch_features.device)
         reg_proposals = torch.zeros((*cls_logits.shape[:2], self.num_category + 2 + 2 * self.n_offsets), 
                                         device=batch_features.device)
-        reg_proposals += self.anchors
+        reg_proposals += self.anchors #添加原来的位置
         # reg_proposals[:, :, :2] = cls_logits
-        reg_proposals[:, :, :self.num_category] = cls_logits
+        reg_proposals[:, :, :self.num_category] = cls_logits #分类的结果
         # reg_proposals[:, :, 4:] += reg
-        reg_proposals[:, :, self.num_category+2:] += reg
-
+        reg_proposals[:, :, self.num_category+2:] += reg #回归的u，v结果
+        # 都使用了anchor了，所以不需要再进行nms了
         # Apply nms
         # proposals_list = self.nms(reg_proposals, attention_matrix, nms_thres, nms_topk, conf_threshold, eval=eval)
 
         proposals_list = []
-        for proposals, att_matrix in zip(reg_proposals, attention_matrix):
+        for proposals, att_matrix in zip(reg_proposals, attention_matrix):#这个atten_matrix有什么用？
             anchor_inds = torch.arange(reg_proposals.shape[1], device=proposals.device)
             proposals_list.append((proposals, self.anchors, att_matrix, anchor_inds))
 
