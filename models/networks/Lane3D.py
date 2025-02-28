@@ -351,12 +351,12 @@ class LanePredictionHead(nn.Module):
     def forward(self, x):
         if not self.use_default_anchor:
             # multi-gpu setting
-            batch_size, channel, fmap_h, fmap_w = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
+            batch_size, channel, fmap_h, fmap_w = x.shape[0], x.shape[1], x.shape[2], x.shape[3] #
             sheared_feature_map = torch.zeros((batch_size, channel, fmap_h, fmap_w*6)).to(x.device)
             v_arange = torch.arange(fmap_h).unsqueeze(dim=1).repeat(1,fmap_w*6).to(x.device)
             self.fmap_mapping_interp_index = self.fmap_mapping_interp_index.to(x.device) #这个在Load_Data.py中有赋值，也是角度(6个角度，在xv附近偏移)
-            self.fmap_mapping_interp_weight = self.fmap_mapping_interp_weight.to(x.device)
-
+            self.fmap_mapping_interp_weight = self.fmap_mapping_interp_weight.to(x.device)#插值！
+            #对每个batch进行操作
             for batch_idx, x_feature_map in enumerate(x):
                 # if True:
                 # print("v_arange device: " + str(v_arange.device))
@@ -365,13 +365,13 @@ class LanePredictionHead(nn.Module):
                 # print("sheared_feature_map device: " + str(sheared_feature_map.device))
                 # print("batch_idx device: " + str(v_arange.device))
                 # print("x_feature_map device: " + str(x_feature_map.device))
-
+                #这里暂时没有看懂,我的建议是别管了，直接作为网络学习吧,我认为这里没有必要
                 sheared_feature_map[batch_idx] = \
                     x_feature_map[:, v_arange, self.fmap_mapping_interp_index[:,:,0]] * self.fmap_mapping_interp_weight[:,:,0] + \
                     x_feature_map[:, v_arange, self.fmap_mapping_interp_index[:,:,1]] * self.fmap_mapping_interp_weight[:,:,1]
             x = torch.cat((x, sheared_feature_map), dim=3)
 
-        x = self.features(x)
+        x = self.features(x)#现在最后一维是112
         # x suppose to be N X 64 X 4 X ipm_w/8, reshape to N X 256 X ipm_w/8 X 1
         # TODO: this only works with fpn_out_channels=128 & num_proj=4
         sizes = x.shape
@@ -380,7 +380,7 @@ class LanePredictionHead(nn.Module):
         x = self.dim_rt(x)
         x = x.squeeze(-1).transpose(1, 2)
         if self.no_3d:
-            return x
+            return x    #8,112,32,这个即可对应bev的seg结果
 
         # apply sigmoid to the visbility terms to make it in (0, 1)
         for i in range(self.num_lane_type):

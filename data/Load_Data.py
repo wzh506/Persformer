@@ -203,7 +203,7 @@ class LaneDataset(Dataset):
             fmap_mapping_right_40_interp_index = np.zeros((fmap_height, fmap_width, 2), dtype=int)
             fmap_mapping_right_40_interp_weight = np.zeros((fmap_height, fmap_width, 2))
             for i in range(fmap_height):
-                for j in range(fmap_width):
+                for j in range(fmap_width):#对于某一个位置uv上的ij，如果满足
                     if fmap_mapping_left_10[i, j] >= 0.5 and fmap_mapping_left_10[i, j] < fmap_width-0.5:
                         low_bound = np.floor(fmap_mapping_left_10[i, j] + 0.5) - 0.5
                         up_bound = low_bound + 1

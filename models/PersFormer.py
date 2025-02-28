@@ -123,8 +123,8 @@ class PersFormer(nn.Module):
         '''
             bev_feat size: torch.Size([4, 512, 26, 16])
         '''
-
-        out = self.lane_out(bev_feat)
+        # 这里是最难理解的地方
+        out = self.lane_out(bev_feat)#8,112,32
 
         cam_height = self.cam_height.to(input.device) # 这个不需要预测，直接使用
         cam_pitch = self.cam_pitch.to(input.device)

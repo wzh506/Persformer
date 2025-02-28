@@ -224,7 +224,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
 
         :param pred_3D_lanes: predicted tensor with size N x (ipm_w/8) x 3*(2*K+1)
         :param gt_3D_lanes: ground-truth tensor with size N x (ipm_w/8) x 3*(2*K+1)
-        :param pred_pitch: predicted pitch with size N
+        :param pred_pitch: predicted pitch with size N 这个是拿所有的数据进行average获得的呀
         :param gt_pitch: ground-truth pitch with size N
         :param pred_hcam: predicted camera height with size N
         :param gt_hcam: ground-truth camera height with size N
@@ -309,7 +309,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
 
         if not self.pred_cam:
             return self.loss_dist[0]*loss0 + self.loss_dist[1]*loss1 + self.loss_dist[2]*loss2, {'vis_loss': loss0, 'prob_loss': loss1, 'reg_loss': loss2}
-        loss3 = torch.sum(torch.abs(gt_pitch-pred_pitch))+torch.sum(torch.abs(gt_hcam-pred_hcam))
+        loss3 = torch.sum(torch.abs(gt_pitch-pred_pitch))+torch.sum(torch.abs(gt_hcam-pred_hcam))# 这个为啥要pred，不是内参需要给出吗
         return loss0+loss1+loss2+loss3, {'vis_loss': loss0, 'prob_loss': loss1, 'reg_loss': loss2, 'cam_pred_loss': loss3}
 
 class Laneline_loss_gflat_novis_withdict(nn.Module):
