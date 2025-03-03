@@ -94,7 +94,7 @@ class PersFormer(nn.Module):
                                                             args._2d_vis_loss_weight,
                                                             args._2d_prob_loss_weight,
                                                             args._2d_reg_loss_weight,
-                                                            args._seg_loss_weight]), requires_grad=True)
+                                                            args._seg_loss_weight]), requires_grad=True)#
         self._initialize_weights(args)
     #只需要：图像数据，透视变换矩阵（图像平面到IPM平面的变换矩阵，这个矩阵只是初始值）
     def forward(self, input, _M_inv = None):

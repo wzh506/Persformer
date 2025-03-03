@@ -215,14 +215,14 @@ class Runner:
                     # Inference model 前向传播过程
                     laneatt_proposals_list, output_net, pred_hcam, pred_pitch, pred_seg_bev_map, uncertainty_loss = model(input=input, _M_inv=M_inv)
 
-                    # 3D loss
+                    # 3D loss 包含3D的vis,reg,cls
                     loss_3d, loss_3d_dict = criterion(output_net, gt, pred_hcam, gt_hcam, pred_pitch, gt_pitch)
                     # Add laneatt loss
                     loss_att, loss_att_dict = model.module.laneatt_head.loss(laneatt_proposals_list, gt_laneline_img,
                                                                             cls_loss_weight=args.cls_loss_weight,
                                                                             reg_vis_loss_weight=args.reg_vis_loss_weight)
 
-                    loss_seg = bceloss(pred_seg_bev_map, seg_bev_map)
+                    loss_seg = bceloss(pred_seg_bev_map, seg_bev_map)#seg map loss
                     # overall loss
                     loss = self.compute_loss(args, epoch, loss_3d, loss_att, loss_seg, uncertainty_loss, loss_3d_dict, loss_att_dict)
                 elif args.model_name == "GenLaneNet":
@@ -242,9 +242,9 @@ class Runner:
                     nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad_norm)
 
                 # Setup backward pass
-                loss.backward()
+                loss.backward() #反向传播
                 # update params
-                optimizer.step()
+                optimizer.step() #模型参数更新
 
                 # reduce loss from all gpu, then update losses
                 if args.model_name == "PersFormer":

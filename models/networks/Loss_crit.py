@@ -259,7 +259,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
         loss0 = -torch.sum(
             valid_category_weight * gt_visibility * torch.log(pred_visibility + torch.tensor(1e-9)) +
             valid_category_weight * (torch.ones_like(gt_visibility) - gt_visibility + torch.tensor(1e-9)) * 
-            torch.log(torch.ones_like(pred_visibility) - pred_visibility + torch.tensor(1e-9))) / self.num_y_steps
+            torch.log(torch.ones_like(pred_visibility) - pred_visibility + torch.tensor(1e-9))) / self.num_y_steps #这是一个BCE loss,只看有效的category
         # weights = np.linspace(1.0, 2.0, num=self.num_y_steps)
         # weights = torch.from_numpy(weights).to(gt_visibility.device)
         # weights = weights.expand(sizes[0], sizes[1], self.num_types, -1)
@@ -280,7 +280,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
         gt_category_onehot2class = torch.argmax(gt_category_onehot, dim=-1)
         pred_category = pred_category.reshape(-1, pred_category.shape[-1])
         gt_category_onehot2class = gt_category_onehot2class.reshape(-1)
-        loss1 = cross_entropy_loss(pred_category, gt_category_onehot2class)
+        loss1 = cross_entropy_loss(pred_category, gt_category_onehot2class)#cls loss,有一些是背景,但是对应anchor位置的不应该预测错误
 
         # print("pred_category: ", pred_category)
         # print("gt_category: ", gt_category_onehot)
@@ -295,7 +295,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
             # only x offsets
             loss2 = torch.sum(torch.norm(valid_category_weight*gt_visibility*(pred_anchors-gt_anchors), p=1, dim=3))
         else:
-            # x/z offsets
+            # x/z offsets ,这个loss包含两个位置偏移量
             loss2 = torch.sum(torch.norm(valid_category_weight*torch.cat((gt_visibility, gt_visibility), 3) *
                                      (pred_anchors-gt_anchors), p=1, dim=3))
         
@@ -309,7 +309,7 @@ class Laneline_loss_gflat_multiclass(nn.Module):
 
         if not self.pred_cam:
             return self.loss_dist[0]*loss0 + self.loss_dist[1]*loss1 + self.loss_dist[2]*loss2, {'vis_loss': loss0, 'prob_loss': loss1, 'reg_loss': loss2}
-        loss3 = torch.sum(torch.abs(gt_pitch-pred_pitch))+torch.sum(torch.abs(gt_hcam-pred_hcam))# 这个为啥要pred，不是内参需要给出吗
+        loss3 = torch.sum(torch.abs(gt_pitch-pred_pitch))+torch.sum(torch.abs(gt_hcam-pred_hcam))# 这个为啥要pred，不是内参需要给出吗,感觉没啥用
         return loss0+loss1+loss2+loss3, {'vis_loss': loss0, 'prob_loss': loss1, 'reg_loss': loss2, 'cam_pred_loss': loss3}
 
 class Laneline_loss_gflat_novis_withdict(nn.Module):
