@@ -30,9 +30,12 @@ def main():
     # persformer_once.config(args)
     persformer_openlane.config(args)
     # initialize distributed data parallel set
+    args.local_rank = int(os.environ['LOCAL_RANK'])
+    print('args.local_rank:', args.local_rank) 
     ddp_init(args)
     # define runner to begin training or evaluation
     runner = Runner(args)
+    
     # args.evaluate = True
     if not args.evaluate:
         runner.train()

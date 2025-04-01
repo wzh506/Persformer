@@ -1,9 +1,9 @@
 1.训练代码
 python -m torch.distributed.launch --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=32 --nepochs=100 --resume /home/zhaohui1.wang/mal/github/PersFormer_3DLane/data_splits/apollo/PersFormer
-torchrun --nproc_per_node 2 --nnodes=1 --node_rank=0  main_persformer.py --mod=PersFormer --batch_size=32 --nepochs=100
+torchrun --nproc_per_node 2 --nnodes=1 --node_rank=0  main_persformer.py --mod=PersFormer --batch_size=1 --nepochs=100
 torchrun --nproc_per_node 2 --nnodes=1 --node_rank=0  main_persformer.py --mod=PersFormer --batch_size=32 --nepochs=100
 单gpu调试：
-python  main_persformer.py --mod=PersFormer --batch_size=8 --nepochs=100
+python  main_persformer.py --mod=PersFormer --batch_size=2 --nepochs=100
 s
 Downloading: "https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_b7_ns-1dbc32de.pth" to /home/zhaohui1.wang/.cache/torch/hub/checkpoints/tf_efficientnet_b7_ns-1dbc32de.pth
 3.vscode配置如下
@@ -43,6 +43,8 @@ python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=P
 切换数据集是通过Main函数中替换persformer_xx函数的方法实现的,同时还得设置evaluate = true
 
 训练方法：
-python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=PersFormer --batch_size=32
+python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=PersFormer --batch_size=8
+python -m torch.distributed.run --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=1
 测试方法：
 python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=PersFormer --batch_size=32 --evaluate
+记录：在h20上可以设置batch=32,在3090上可以设置batch=8

@@ -124,7 +124,7 @@ def define_args():
     parser.add_argument('--save_freq', type=int, default=500, help='padding')
     # DDP setting
     parser.add_argument('--distributed', action='store_true')
-    parser.add_argument('--local-rank', dest='local_rank', type=int, help='node rank for distributed training') #妈的
+    parser.add_argument('--local-rank', dest='local_rank', type=int,help='node rank for distributed training') #不能给固定值，否则就是两个程序
     # parser.add_argument("--local_rank", type=int)
     parser.add_argument('--gpu', type=int, default = 0)
     parser.add_argument('--world_size', type=int, default = 1)

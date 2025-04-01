@@ -27,8 +27,10 @@ def config(args):
 
     # 1000 sequence
     args.dataset_name = 'openlane'
-    args.dataset_dir = '/home/zhaohui1.wang/github/datasets/openlane/images/'
-    args.data_dir = '/home/zhaohui1.wang/github/datasets/openlane/lane3d_1000/'
+    # args.dataset_dir = '/home/zhaohui1.wang/github/datasets/openlane/images/'
+    args.dataset_dir = '/media/wzh/datasets/openlane/images/'
+    # args.data_dir = '/home/zhaohui1.wang/github/datasets/openlane/lane3d_1000/'
+    args.data_dir = '/media/wzh/datasets/openlane/lane3d_1000/'
 
     if 'openlane' in args.dataset_name:
         openlane_config(args)
