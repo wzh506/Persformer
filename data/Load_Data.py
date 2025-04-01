@@ -106,6 +106,14 @@ class LaneDataset(Dataset):
         self.H_g2ipm = np.linalg.inv(self.H_ipm2g)
         # self.H_g2ipm = np.linalg.inv(H_ipm2g)
 
+        # ipm_img = cv2.warpPerspective(img, self.H_g2ipm, (self.ipm_w,self.ipm_h)) 
+        # for i in range(0,4):
+        #   cv2.circle(output, (pts2[i][0], pts2[i][1]),6, (0, 0, 255), cv2.FILLED)
+
+
+
+
+
         # segmentation setting
         self.lane_width = args.lane_width
 
@@ -120,6 +128,14 @@ class LaneDataset(Dataset):
             self.H_im2ipm = np.linalg.inv(np.matmul(self.H_crop, np.matmul(self.H_g2im, self.H_ipm2g)))
         else:
             self.fix_cam = False
+            #为了绘制ipm图像，需要将ipm图像的坐标转换到原图像坐标
+            # 虽然后面不用，但是还是先计算放着
+            self.cam_height = args.cam_height
+            self.cam_pitch = np.pi / 180 * args.pitch
+            self.P_g2im = projection_g2im(self.cam_pitch, self.cam_height, args.K)
+            self.H_g2im = homograpthy_g2im(self.cam_pitch, self.cam_height, args.K)
+            self.H_im2g = np.linalg.inv(self.H_g2im)
+            self.H_im2ipm = np.linalg.inv(np.matmul(self.H_crop, np.matmul(self.H_g2im, self.H_ipm2g)))
 
         # compute anchor steps
         self.use_default_anchor = args.use_default_anchor
@@ -299,7 +315,7 @@ class LaneDataset(Dataset):
                 self._gt_laneline_im_all, \
                 self._gt_centerline_im_all, \
                 self._im_anchor_origins, \
-                self._im_anchor_angles = self.init_dataset_3D(dataset_base_dir, json_file_path)
+                self._im_anchor_angles = self.init_dataset_3D(dataset_base_dir, json_file_path) #初始化时就读取了
             args.im_anchor_origins = self._im_anchor_origins
             args.im_anchor_angles = self._im_anchor_angles
         if hasattr(self, '_label_list'):
@@ -700,6 +716,145 @@ class LaneDataset(Dataset):
         """
         return self.n_samples
 
+    def get_ipm(self,image):
+        # 获得IPM图像
+        # ipm_img = cv2.warpPerspective(img, self.H_g2ipm, (self.ipm_w,self.ipm_h)) 
+        # for i in range(0,4):
+        #   cv2.circle(output, (pts2[i][0], pts2[i][1]),6, (0, 0, 255), cv2.FILLED)
+        import torch
+        from torchvision.transforms import ToPILImage
+
+        # Assume `my_tensor` is your tensor image with shape [C, H, W] and values in [0, 1]
+        image.save("compare/image.png")
+        img = image.copy()
+        cv_image = np.array(img)  # PIL转numpy
+        cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
+        ipm_img1 = cv2.warpPerspective(cv_image, self.H_im2ipm, (self.ipm_w,self.ipm_h)) #看着不太像
+        cv2.imwrite("compare/ipm_img1.png", ipm_img1) #感觉1的质量要高一些
+        ipm_img2 = cv2.warpPerspective(cv_image, H_im2ipm, (self.ipm_w,self.ipm_h)) 
+        cv2.imwrite("compare/ipm_img2.png", ipm_img2)
+
+        # pts2 = np.float32([[0, 0],
+        #                 [self.ipm_w-1, 0],
+        #                 [0, self.ipm_h-1],
+        #                 [self.ipm_w-1, self.ipm_h-1]])
+        # for i in range(0,4):
+        #   cv2.circle(ipm_img, (pts2[i][0], pts2[i][1]),6, (0, 0, 255), cv2.FILLED)
+        cv2.imwrite("compare/ipm_img.png", ipm_img)
+        colors = {
+            0: (0, 0, 0),       # Black
+            10: (255, 0, 0),     # Blue
+            2: (0, 255, 0),     # Green
+            3: (0, 0, 255),     # Red
+            4: (255, 255, 0),   # Cyan
+            5: (255, 0, 255),   # Magenta
+            6: (0, 255, 255),   # Yellow
+            7: (128, 0, 0),     # Maroon
+            8: (0, 128, 0),     # Dark Green
+            9: (0, 0, 128),      # Navy
+            1: (255, 255, 255),  # White
+        }
+        seg_bev = seg_bev_map.squeeze(0)
+        bev_h, bev_w = seg_bev.shape
+        color_gt_mask = np.zeros((bev_h, bev_w, 3), dtype=np.uint8)
+        for value, color in colors.items():
+            color_gt_mask[seg_bev == value] = color
+        cv2.imwrite(f"compare/seg_bev_map.", color_gt_mask)
+        #_label_image_path 可以找到当前文件的名称
+        gtlanes = self._label_laneline_all_org[idx]
+
+        def plot_ground_lanes(gtlanes, ego_pos=(0,0)):
+            import matplotlib.pyplot as plt
+            from matplotlib.patches import Ellipse
+            import numpy as np
+            """
+            参数：
+            gtlanes : List[List[Dict]] 地面坐标系车道线数据
+            ego_pos : Tuple 自车位置（默认原点）
+            """
+            plt.figure(figsize=(10, 10))
+            fig = plt.figure(figsize=(12, 9))
+            ax = fig.add_subplot(111, projection='3d')
+            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+            # 绘制各条车道线
+            for idx, lane in enumerate(gtlanes):
+                # lane = gtlanes[0]
+                x = np.array([p[0] for p in lane])
+                y = np.array([p[1] for p in lane])
+                z = np.array([p[2] for p in lane])
+
+                ax.plot(x, y, z, 
+                    color=colors[idx % len(colors)],
+                    linewidth=2.5,
+                    marker='o',
+                    markersize=4,
+                    label=f'Lane {idx+1}')
+            # ax.set_xlabel('X (m)')
+            # ax.set_ylabel('Y (m)')
+            # ax.set_zlabel('Z (m)')
+            # ax.legend()
+            plt.show() #这个图需要在本地旋转才能很好地可视化
+                
+                
+                # 添加车道宽度标注
+                # if len(x) > 1:
+                #     mid_idx = len(x)//2
+                #     dx = x[mid_idx+1] - x[mid_idx-1]
+                #     dy = y[mid_idx+1] - y[mid_idx-1]
+                #     plt.text(x[mid_idx], y[mid_idx], 
+                #             f'w={calc_lane_width(lane):.1f}m',
+                #             rotation=np.degrees(np.arctan2(dy, dx)),
+                #             fontsize=8, color=color)
+            plt.savefig('compare/gt_line.png')
+            # # 绘制自车位置
+            # plt.scatter(*ego_pos, s=100, c='black', marker='s', edgecolors='orange', 
+            #             linewidths=2, label='Ego Vehicle')
+            
+            # # 设置坐标轴参数
+            # plt.gca().set_aspect('equal', adjustable='box')
+            # plt.xlabel('East (m)', fontsize=12)
+            # plt.ylabel('North (m)', fontsize=12)
+            # plt.grid(True, linestyle='--', alpha=0.5)
+            
+            # # 添加比例尺
+            # scale_bar(plt.gca(), 10)  # 10米比例尺
+            
+            # plt.legend(loc='upper right', bbox_to_anchor=(1.25, 1))
+            # # plt.title('Lane Markings in Ground Coordinate System', pad=20)
+            # # plt.show()
+            import datetime
+            os.makedirs('compare', exist_ok=True)
+    
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"gtlanes.pkl"
+            save_path = os.path.join('compare', filename)
+            with open(save_path, 'wb') as f:
+                pickle.dump(gtlanes, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        def calc_lane_width(lane):
+            """计算车道平均宽度"""
+            dx = [p['x'] for p in lane]
+            dy = [p['y'] for p in lane]
+            return np.mean(np.sqrt(np.diff(dx)**2 + np.diff(dy)**2))
+
+        def scale_bar(ax, length=10):
+            """添加比例尺"""
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            x_pos = xlim[0] + 0.05*(xlim[1]-xlim[0])
+            y_pos = ylim[0] + 0.05*(ylim[1]-ylim[0])
+            
+            ax.add_patch(Ellipse((x_pos+length/2, y_pos), length, 0.5*(ylim[1]-ylim[0])/50,
+                                edgecolor='black', facecolor='gray', alpha=0.8))
+            ax.text(x_pos + length/2, y_pos - 0.5*(ylim[1]-ylim[0])/20, 
+                f'{length} m', ha='center', fontsize=10)
+
+        # 使用示例
+        plot_ground_lanes(gtlanes, ego_pos=(0,0))
+
+
+        
+
     # new getitem, WIP
     def WIP__getitem__(self, idx):
         """
@@ -809,6 +964,7 @@ class LaneDataset(Dataset):
             z_values = gt_lanes[i][:, 1]
             visibility = gt_vis_inds[i]
             # assign anchor tensor values
+            #如何早会原来的xyz呢
             gt_anchor[ass_id, 0, 0: self.num_y_steps] = x_off_values #不同线共用ass_id不就会出问题了吗
             if not self.no_3d:
                 gt_anchor[ass_id, 0, self.num_y_steps:2*self.num_y_steps] = z_values
@@ -906,7 +1062,7 @@ class LaneDataset(Dataset):
         return self.WIP__getitem__(idx)
 
 
-    def init_dataset_3D(self, dataset_base_dir, json_file_path):
+    def init_dataset_3D(self, dataset_base_dir, json_file_path):#这里才能获得原始的3D点位置数据
         """
         :param dataset_info_file:
         :return: image paths, labels in unormalized net input coordinates
@@ -1037,15 +1193,15 @@ class LaneDataset(Dataset):
             gt_lanes = gt_laneline_pts_all[idx]
             gt_visibility = gt_laneline_visibility_all[idx]
             gt_category = gt_laneline_category_all[idx]
-
-            # prune gt lanes by visibility labels
+            # 这里获得3D坐标点
+            # prune gt lanes by visibility labels gt_laneline_pts_all是3D坐标,而且还是ground坐标系下面的
             gt_lanes = [prune_3d_lane_by_visibility(gt_lane, gt_visibility[k]) for k, gt_lane in enumerate(gt_lanes)]
             gt_laneline_pts_all_org[idx] = gt_lanes
             
             # project gt laneline to image plane
             gt_laneline_im = []
             for gt_lane in gt_lanes:
-                x_vals, y_vals = projective_transformation(P_g2im, gt_lane[:,0], gt_lane[:,1], gt_lane[:,2])
+                x_vals, y_vals = projective_transformation(P_g2im, gt_lane[:,0], gt_lane[:,1], gt_lane[:,2]) #将3D坐标转换到2D坐标
                 gt_laneline_im_oneline = np.array([x_vals, y_vals]).T.tolist()
                 gt_laneline_im.append(gt_laneline_im_oneline)
             gt_laneline_im_all.append(gt_laneline_im)
@@ -1146,7 +1302,7 @@ class LaneDataset(Dataset):
                gt_laneline_visibility_all, gt_centerline_visibility_all, \
                gt_laneline_category_all_org, gt_laneline_category_all,\
                gt_laneline_im_all, gt_centerline_im_all,\
-               anchor_origins, anchor_angles
+               anchor_origins, anchor_angles   #按照idx排序好的
 
  
     def read_cache_file(self, cache_file):

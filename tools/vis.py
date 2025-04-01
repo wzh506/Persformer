@@ -3,7 +3,7 @@ import numpy as np
     # Define colors for each value from 0 to 9
 colors = {
     0: (0, 0, 0),       # Black
-    1: (255, 0, 0),     # Blue
+    10: (255, 0, 0),     # Blue
     2: (0, 255, 0),     # Green
     3: (0, 0, 255),     # Red
     4: (255, 255, 0),   # Cyan
@@ -11,7 +11,8 @@ colors = {
     6: (0, 255, 255),   # Yellow
     7: (128, 0, 0),     # Maroon
     8: (0, 128, 0),     # Dark Green
-    9: (0, 0, 128)      # Navy
+    9: (0, 0, 128),      # Navy
+    1: (255, 255, 255),  # White
 }
 bev_h, bev_w = gt_mask.shape
 color_gt_mask = np.zeros((bev_h, bev_w, 3), dtype=np.uint8)
@@ -23,7 +24,7 @@ bev_h, bev_w = seg_bev.shape
 color_gt_mask = np.zeros((bev_h, bev_w, 3), dtype=np.uint8)
 for value, color in colors.items():
     color_gt_mask[seg_bev == value] = color
-cv2.imwrite(f"seg_bev_map.jpg", color_gt_mask)
+cv2.imwrite(f"compare/seg_bev_map.", color_gt_mask)
 
 # Save gt_mask as .jpg file
 cv2.imwrite("gt_mask.jpg", color_gt_mask)

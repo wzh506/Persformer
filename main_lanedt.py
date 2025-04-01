@@ -15,7 +15,7 @@
 # ==============================================================================
 
 import os
-from config import persformer_openlane, persformer_once, persformer_apollo
+from config import lanedt_openlane, lanedt_apollo
 from utils.utils import *
 from experiments.ddp import *
 from experiments.runner import *
@@ -24,11 +24,11 @@ from experiments.runner import *
 def main():
     parser = define_args() # args in utils.py
     args = parser.parse_args()
-
+    # 从下面几个进行注释选择是否使用
     # specify dataset and model config
-    # persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py
-    # persformer_once.config(args)
-    persformer_openlane.config(args)
+    # lanedt_apollo.config(args) 
+    # lanedt_once.config(args)
+    lanedt_openlane.config(args)
     # initialize distributed data parallel set
     ddp_init(args)
     # define runner to begin training or evaluation
@@ -40,5 +40,5 @@ def main():
         runner.eval()
 
 if __name__ == '__main__':
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     main()
