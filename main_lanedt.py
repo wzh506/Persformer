@@ -30,6 +30,7 @@ def main():
     # lanedt_once.config(args)
     lanedt_openlane.config(args)
     # initialize distributed data parallel set
+    args.local_rank = int(os.environ['LOCAL_RANK']) 
     ddp_init(args)
     # define runner to begin training or evaluation
     runner = Runner(args)

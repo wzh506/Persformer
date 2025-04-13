@@ -20,15 +20,9 @@ import os.path as ops
 
 def config(args):
     args.model_name = 'PersFormer'
-    # 300 sequence
-    # args.dataset_name = 'openlane'
-    # args.dataset_dir = '/mnt/disk01/openlane/images/'
-    # args.data_dir = '/mnt/disk01/openlane/lane3d_300/'
-
-    # 1000 sequence
-    args.dataset_name = 'openlane'
-    args.dataset_dir = '/mnt/disk01/openlane/images/'
-    args.data_dir = '/mnt/disk01/openlane/lane3d_1000/'
+    args.dataset_name = 'apollo'
+    args.dataset_dir = '/home/zhaohui1.wang/github/datasets/Apollo/Apollo_Sim_3D_Lane_Release/Apollo_Sim_3D_Lane_Release'
+    args.data_dir = '/home/zhaohui1.wang/github/datasets/Apollo/Apollo_Sim_3D_Lane_Release/Apollo_Sim_3D_Lane_Release'
 
     if 'openlane' in args.dataset_name:
         openlane_config(args)
@@ -76,7 +70,7 @@ def config(args):
     args.use_fpn = False
 
     # grad clip
-    args.clip_grad_norm = 35.0
+    args.clip_grad_norm = 0
     args.loss_threshold = 1e5
 
     # scheduler
@@ -100,7 +94,7 @@ def config(args):
     # learnable weight
     # in best model setting, they are 10, 4, 1, 100, 100, 100, 10
     # factor = 1 / exp(weight)
-    args.learnable_weight_on = True
+    args.learnable_weight_on = False
     args._3d_vis_loss_weight = 0.0 # -2.3026
     args._3d_prob_loss_weight = 0.0 # -1.3863
     args._3d_reg_loss_weight = 0.0
@@ -113,7 +107,7 @@ def config(args):
     args.seg_bev = True
     args.lane_width = 2
     args.loss_seg_weight = 0.0
-    args.seg_start_epoch = 1
+    args.seg_start_epoch = 1000
 
     # ipm related
     args.top_view_region = np.array([[-10, 103], [10, 103], [-10, 3], [10, 3]])
@@ -144,10 +138,10 @@ def sim3d_config(args):
     args.fix_cam = False
     args.pred_cam = False
 
-    # set camera parameters for the test datasets
+    # set camera parameters for the test datasets 2015是focal,不知道怎么获得的
     args.K = np.array([[2015., 0., 960.],
                        [0., 2015., 540.],
-                       [0., 0., 1.]])
+                       [0., 0., 1.]]) #这个东西怎么算出来的？
 
     # specify model settings
     """
@@ -167,10 +161,9 @@ def sim3d_config(args):
     args.y_ref = 5  # new anchor prefer closer range gt assign
 
 
-
 def openlane_config(args):
     # set dataset parameters
-    args.org_h = 1280
+    args.org_h = 1280 #原始图片大小
     args.org_w = 1920
     args.crop_y = 0
     args.no_centerline = True

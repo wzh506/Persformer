@@ -63,7 +63,7 @@ class Runner:
 
         # Get Dataset
         if args.proc_id == 0:
-            print("Loading Dataset ...")
+            print("Loading Dataset ...")# 在这里读取数据集
         self.val_gt_file = ops.join(args.data_dir, 'test.json')
         self.train_dataset, self.train_loader, self.train_sampler = self._get_train_dataset()
         self.valid_dataset, self.valid_loader, self.valid_sampler = self._get_valid_dataset()
@@ -114,6 +114,8 @@ class Runner:
             model, optimizer, scheduler, best_epoch, lowest_loss, best_f1_epoch, best_val_f1 = self._get_model_ddp()
         elif args.model_name == "GenLaneNet":
             model1, model2, optimizer, scheduler, best_epoch, lowest_loss, best_f1_epoch, best_val_f1 = self._get_model_ddp()
+        elif args.model_name == "LaneDT":
+            model, optimizer, scheduler, best_epoch, lowest_loss, best_f1_epoch, best_val_f1 = self._get_model_ddp()
 
         criterion = self.criterion
         if not args.no_cuda:
@@ -134,6 +136,11 @@ class Runner:
                     args.mod, sum(tensor.numel() for tensor in model1.parameters())/1e6))
                 print("Number of parameters in model2 {} is {:.3f}M".format(
                     args.mod, sum(tensor.numel() for tensor in model2.parameters())/1e6))
+            elif args.model_name == "LaneDT":
+                print(40*"="+"\nArgs:{}\n".format(args)+40*"=")
+                print("Init model: '{}'".format(args.mod))
+                print("Number of parameters in model {} is {:.3f}M".format(args.mod, sum(tensor.numel() for tensor in model.parameters())/1e6))
+ 
 
         # image matrix
         _S_im_inv = torch.from_numpy(np.array([[1/np.float(args.resize_w),                         0, 0],
