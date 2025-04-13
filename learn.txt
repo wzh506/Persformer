@@ -43,7 +43,7 @@ python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=P
 切换数据集是通过Main函数中替换persformer_xx函数的方法实现的,同时还得设置evaluate = true
 
 训练方法：
-python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=PersFormer --batch_size=8
+python -m torch.distributed.launch --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=8
 python -m torch.distributed.run --nproc_per_node 2 main_persformer.py --mod=PersFormer --batch_size=1
 测试方法：
 python -m torch.distributed.launch --nproc_per_node 1 main_persformer.py --mod=PersFormer --batch_size=32 --evaluate
