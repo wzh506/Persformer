@@ -100,7 +100,7 @@ class PersFormer(nn.Module):
     def forward(self, input, _M_inv = None):
         out_featList = self.encoder(input)#对应论文图中的backbone
         neck_out = self.neck(out_featList[0])#特征图只有一个尺度（不对劲）
-        frontview_features = self.shared_encoder(neck_out)
+        frontview_features = self.shared_encoder(neck_out) #batch=8
         '''
             frontview_features_0 size: torch.Size([4, 128, 180, 240])
             frontview_features_1 size: torch.Size([4, 256, 90, 120])
@@ -109,9 +109,9 @@ class PersFormer(nn.Module):
         '''
         frontview_final_feat = frontview_features[-1] #获得最后一维的特征尺度
 
-        laneatt_proposals_list = self.laneatt_head(frontview_final_feat) #这一步即可获得一个2D Lane的预测结果
+        laneatt_proposals_list = self.laneatt_head(frontview_final_feat) #2D Lane检测结果
 
-        projs = self.pers_tr(input, frontview_features, _M_inv)
+        projs = self.pers_tr(input, frontview_features, _M_inv)#
         '''
             projs_0 size: torch.Size([4, 128, 208, 128])
             projs_1 size: torch.Size([4, 256, 104, 64])
@@ -124,7 +124,7 @@ class PersFormer(nn.Module):
             bev_feat size: torch.Size([4, 512, 26, 16])
         '''
         # 这里是最难理解的地方
-        out = self.lane_out(bev_feat)#8,112,32
+        out = self.lane_out(bev_feat)#8,112,32 这里是bev的head
 
         cam_height = self.cam_height.to(input.device) # 这个不需要预测，直接使用
         cam_pitch = self.cam_pitch.to(input.device)
@@ -289,7 +289,7 @@ class PerspectiveTransformer(nn.Module):
                                                         bev_h=bev_h, bev_w=bev_w, 
                                                         spatial_shapes=input_spatial_shapes,
                                                         level_start_index=input_level_start_index) #这里就是Deformabel Attention
-            query_embed = query_embed.permute(0, 2, 1).view(bs, c, bev_h, bev_w).contiguous()
+            query_embed = query_embed.permute(0, 2, 1).view(bs, c, bev_h, bev_w).contiguous()#强行整理为bev的feature
             projs.append(query_embed)
         return projs
 

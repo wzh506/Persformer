@@ -528,11 +528,11 @@ class LaneEval(object):
         laneline_z_error_close = np.array(laneline_z_error_close)
         laneline_z_error_far = np.array(laneline_z_error_far)
 
-        print("match num:"+(str(np.sum(laneline_stats[:,5]))))
-        print("cnt_gt_all:"+str(gt_num_all))
-        print("cnt_pred_all:"+str(pred_num_all))
-        print("cnt_gt_matched:"+str(np.sum(laneline_stats[:,3])))
-        print("cnt_pred_matched:"+str(np.sum(laneline_stats[:,4])))
+        # print("match num:"+(str(np.sum(laneline_stats[:,5]))))
+        # print("cnt_gt_all:"+str(gt_num_all))
+        # print("cnt_pred_all:"+str(pred_num_all))
+        # print("cnt_gt_matched:"+str(np.sum(laneline_stats[:,3])))
+        # print("cnt_pred_matched:"+str(np.sum(laneline_stats[:,4])))
 
         
         if np.sum(laneline_stats[:, 3])!= 0:

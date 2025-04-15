@@ -26,9 +26,9 @@ def main():
     args = parser.parse_args()
 
     # specify dataset and model config
-    # persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py
+    persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py
     # persformer_once.config(args)
-    persformer_openlane.config(args)
+    # persformer_openlane.config(args)
     # initialize distributed data parallel set
     args.local_rank = int(os.environ['LOCAL_RANK']) #不用用args.local_rank,用这个来传递参数
     # print('args.local_rank:', args.local_rank) 
