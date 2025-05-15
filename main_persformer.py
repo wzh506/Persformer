@@ -26,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     # specify dataset and model config
-    persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py
+    persformer_apollo.config(args) #选择apollo数据集,使用的是persformer_apollo.py，这个代码很傻的地方就说confing里面会定义evaluate=False
     # persformer_once.config(args)
     # persformer_openlane.config(args)
     # initialize distributed data parallel set

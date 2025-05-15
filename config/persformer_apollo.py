@@ -32,13 +32,13 @@ def config(args):
     args.save_prefix = ops.join(os.getcwd(), 'data_splits')
     args.save_path = ops.join(args.save_prefix, args.dataset_name)
 
-    # for the case only running evaluation
-    args.evaluate = False
-    args.evaluate_case = False
+    # for the case only running evaluation.
+    args.evaluate = True
+    args.evaluate_case = True
 
     # settings for save and visualize
     args.print_freq = 50
-    args.save_freq = 50
+    args.save_freq = 1 #全部图片都保存
 
     # data loader
     args.nworkers = 4

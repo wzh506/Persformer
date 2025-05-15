@@ -2375,55 +2375,173 @@ class LaneDataset(Dataset):
             else:
                 return self.H_g2im, self.P_g2im, self.H_crop, self.H_im2ipm
         else:
-            idx_json_file = self._label_list[idx]
-            with open(idx_json_file, 'r') as file:
-                file_lines = [line for line in file]
-                info_dict = json.loads(file_lines[0])
+            if hasattr(self, '_label_list'):
+                idx_json_file = self._label_list[idx]
+                
+                with open(idx_json_file, 'r') as file:
+                    file_lines = [line for line in file]
+                    info_dict = json.loads(file_lines[0])
 
+                    if not self.fix_cam:
+                        if 'extrinsic' in info_dict:
+                            cam_extrinsics = np.array(info_dict['extrinsic'])
+                        else:
+                            cam_pitch = 0.5/180*np.pi
+                            cam_height = 1.5
+                            cam_extrinsics = np.array([[np.cos(cam_pitch), 0, -np.sin(cam_pitch), 0],
+                                                        [0, 1, 0, 0],
+                                                        [np.sin(cam_pitch), 0,  np.cos(cam_pitch), cam_height],
+                                                        [0, 0, 0, 1]], dtype=float)
+                        # Re-calculate extrinsic matrix based on ground coordinate
+                        R_vg = np.array([[0, 1, 0],
+                                            [-1, 0, 0],
+                                            [0, 0, 1]], dtype=float)
+                        R_gc = np.array([[1, 0, 0],
+                                            [0, 0, 1],
+                                            [0, -1, 0]], dtype=float)
+                        cam_extrinsics[:3, :3] = np.matmul(np.matmul(
+                                                    np.matmul(np.linalg.inv(R_vg), cam_extrinsics[:3, :3]),
+                                                        R_vg), R_gc)
+                        cam_extrinsics[0:2, 3] = 0.0
+                        
+                        # gt_cam_height = info_dict['cam_height']
+                        gt_cam_height = cam_extrinsics[2, 3]
+                        if 'cam_pitch' in info_dict:
+                            gt_cam_pitch = info_dict['cam_pitch']
+                        else:
+                            gt_cam_pitch = 0
+
+                        if 'intrinsic' in info_dict:
+                            cam_intrinsics = info_dict['intrinsic']
+                            cam_intrinsics = np.array(cam_intrinsics)
+                        elif 'calibration' in info_dict:
+                            cam_intrinsics = info_dict['calibration']
+                            cam_intrinsics = np.array(cam_intrinsics)
+                            cam_intrinsics = cam_intrinsics[:, :3]
+                        else:
+                            cam_intrinsics = self.K  
+
+                    _label_cam_height = gt_cam_height
+                    _label_cam_pitch = gt_cam_pitch
+
+                    return self.transform_mats_impl(cam_extrinsics, cam_intrinsics, _label_cam_pitch, _label_cam_height)
+            else: #apollo数据集走这条路
+                _label_image_path = self._label_image_path[idx]
+                _label_cam_height = self._label_cam_height_all[idx]#这个高度和pit
+                _label_cam_pitch = self._label_cam_pitch_all[idx]
+                _label_laneline = self._label_laneline_all[idx] #只有uv坐标,可能是转换到了地面坐标系了
+                _label_laneline_org = self._label_laneline_all_org[idx]
+                _gt_laneline_visibility = self._gt_laneline_visibility_all[idx]
+                _gt_laneline_category = np.ones_like(self._gt_laneline_category_all[idx])
+                _gt_laneline_category_org = np.ones_like(self._gt_laneline_category_all_org[idx])
+                _laneline_ass_id = self._laneline_ass_ids[idx]
+
+                cam_intrinsics = self.K
+                cam_extrinsics = np.zeros((3,4))#这里和俯仰角没有关系吗??
+                cam_extrinsics[2,3] = _label_cam_height #那BEV和相机光心就差一个高度
+                idx_json_file = _label_image_path.replace('images', 'labels').replace('jpg', 'txt')
                 if not self.fix_cam:
-                    if 'extrinsic' in info_dict:
-                        cam_extrinsics = np.array(info_dict['extrinsic'])
+                    gt_cam_height = _label_cam_height
+                    gt_cam_pitch = _label_cam_pitch
+                    if 'openlane' in self.dataset_name or 'once' in self.dataset_name:
+                        intrinsics = cam_intrinsics
+                        extrinsics = cam_extrinsics
                     else:
-                        cam_pitch = 0.5/180*np.pi
-                        cam_height = 1.5
-                        cam_extrinsics = np.array([[np.cos(cam_pitch), 0, -np.sin(cam_pitch), 0],
-                                                    [0, 1, 0, 0],
-                                                    [np.sin(cam_pitch), 0,  np.cos(cam_pitch), cam_height],
-                                                    [0, 0, 0, 1]], dtype=float)
-                    # Re-calculate extrinsic matrix based on ground coordinate
-                    R_vg = np.array([[0, 1, 0],
-                                        [-1, 0, 0],
-                                        [0, 0, 1]], dtype=float)
-                    R_gc = np.array([[1, 0, 0],
-                                        [0, 0, 1],
-                                        [0, -1, 0]], dtype=float)
-                    cam_extrinsics[:3, :3] = np.matmul(np.matmul(
-                                                np.matmul(np.linalg.inv(R_vg), cam_extrinsics[:3, :3]),
-                                                    R_vg), R_gc)
-                    cam_extrinsics[0:2, 3] = 0.0
-                    
-                    # gt_cam_height = info_dict['cam_height']
-                    gt_cam_height = cam_extrinsics[2, 3]
-                    if 'cam_pitch' in info_dict:
-                        gt_cam_pitch = info_dict['cam_pitch']
-                    else:
-                        gt_cam_pitch = 0
+                        # should not be used
+                        intrinsics = self.K
+                        extrinsics = np.zeros((3,4))
+                        extrinsics[2,3] = gt_cam_height
+                else:
+                    gt_cam_height = self.cam_height
+                    gt_cam_pitch = self.cam_pitch
+                    # should not be used
+                    intrinsics = self.K
+                    extrinsics = np.zeros((3,4))
+                    extrinsics[2,3] = gt_cam_height
 
-                    if 'intrinsic' in info_dict:
-                        cam_intrinsics = info_dict['intrinsic']
-                        cam_intrinsics = np.array(cam_intrinsics)
-                    elif 'calibration' in info_dict:
-                        cam_intrinsics = info_dict['calibration']
-                        cam_intrinsics = np.array(cam_intrinsics)
-                        cam_intrinsics = cam_intrinsics[:, :3]
-                    else:
-                        cam_intrinsics = self.K  
+                img_name = _label_image_path
 
-                _label_cam_height = gt_cam_height
-                _label_cam_pitch = gt_cam_pitch
+                if 'openlane' in self.dataset_name:
+                    pattern = "/segment-(.*)_with_camera_labels"
+                    seg_result = re.search(pattern=pattern, string=img_name)
+                    # print(seg_result.group(1))
+                    seg_name = seg_result.group(1)
+                else:
+                    seg_name = str(idx)
 
-                return self.transform_mats_impl(cam_extrinsics, cam_intrinsics, _label_cam_pitch, _label_cam_height)
+                # if self.use_memcache:
+                #     # use memcache to accelerate
+                #     img_bytes = self._client.get(str(img_name))
+                #     assert(img_bytes is not None)
+                #     img_mem_view = memoryview(img_bytes)
+                #     img_array = np.frombuffer(img_mem_view, np.uint8)
+                #     image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                #     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                #     image = (Image.fromarray(image))
+                #     # print(type(image))
+                #     # if isinstance(image, Image.Image):
+                #     #     print(str(image.size))
+                #     # else:
+                #     #     print(len(image))
+                #     # assert(1==0)
+                # else:
+                #     # original way
+                #     with open(img_name, 'rb') as f:
+                #         image = (Image.open(f).convert('RGB'))
 
+                # image preprocess with crop and resize
+                # image = F.crop(image, self.h_crop, 0, self.h_org-self.h_crop, self.w_org)
+                # image = F.resize(image, size=(self.h_net, self.w_net), interpolation=InterpolationMode.BILINEAR)
+                # #help='number of lane category, including background=self.num_category
+                # gt_anchor = np.zeros([self.anchor_num, self.num_types, self.anchor_dim], dtype=np.float32)
+                # gt_anchor[:, :, self.anchor_dim - self.num_category] = 1.0 #这是论文中anchor产生的细节,暂时可以不用管
+                # gt_lanes = _label_laneline #(112, 1, 32),不含中心线，self.num_types=1，32-2
+                # gt_vis_inds = _gt_laneline_visibility
+                # # gt_laneline_img = self._gt_laneline_im_all[idx]
+                # gt_category_2d = _gt_laneline_category_org
+                # gt_category_3d = _gt_laneline_category
+                # for i in range(len(gt_lanes)):
+
+                #     # if ass_id >= 0:
+                #     if not self.new_match:
+                #         ass_id = _laneline_ass_id[i]
+                #     else:
+                #         ass_id = _laneline_ass_id[i][0]
+                #     x_off_values = gt_lanes[i][:, 0]
+                #     z_values = gt_lanes[i][:, 1]
+                #     visibility = gt_vis_inds[i]
+                #     # assign anchor tensor values
+                #     #如何早会原来的xyz呢
+                #     gt_anchor[ass_id, 0, 0: self.num_y_steps] = x_off_values #不同线共用ass_id不就会出问题了吗
+                #     if not self.no_3d:
+                #         gt_anchor[ass_id, 0, self.num_y_steps:2*self.num_y_steps] = z_values
+                #         gt_anchor[ass_id, 0, 2*self.num_y_steps:3*self.num_y_steps] = visibility
+
+                #     # gt_anchor[ass_id, 0, -1] = 1.0
+                #     if 'openlane' not in self.dataset_name:
+                #         gt_anchor[ass_id, 0, self.anchor_dim - self.num_category] = 0.0
+                #         gt_anchor[ass_id, 0, -1] = 1.0
+                #     else:
+                #         gt_anchor[ass_id, 0, self.anchor_dim - self.num_category] = 0.0
+                #         gt_anchor[ass_id, 0, self.anchor_dim - self.num_category + gt_category_3d[i]] = 1.0
+
+                # if self.data_aug:
+                #     img_rot, aug_mat = data_aug_rotate(image)
+                #     image = Image.fromarray(img_rot)
+                # image = self.totensor(image).float()
+                # image = self.normalize(image)
+                # gt_anchor = gt_anchor.reshape([self.anchor_num, -1])
+                # gt_anchor = torch.from_numpy(gt_anchor)
+                # gt_cam_height = torch.tensor(gt_cam_height, dtype=torch.float32)
+                # gt_cam_pitch = torch.tensor(gt_cam_pitch, dtype=torch.float32)
+                # gt_category_2d = torch.from_numpy(gt_category_2d)
+                # gt_category_3d = torch.tensor(gt_category_3d, dtype=torch.int)
+                # intrinsics = torch.from_numpy(intrinsics)
+                # extrinsics = torch.from_numpy(extrinsics)
+
+                
+                return self.transform_mats_impl(cam_extrinsics, \
+                                                    cam_intrinsics, _label_cam_pitch, _label_cam_height)
 
     def transform_mats_impl(self, cam_extrinsics, cam_intrinsics, cam_pitch, cam_height):
         if not self.fix_cam:

@@ -464,7 +464,8 @@ class Runner:
                     output_net = nms_bev(output_net, args)
 
                 # Visualization
-                if ((i + 1) % args.save_freq == 0 or args.evaluate) and args.model_name == "PersFormer" and args.dataset_name != 'apollo':
+                # if ((i + 1) % args.save_freq == 0 or args.evaluate) and args.model_name == "PersFormer" and args.dataset_name != 'apollo':
+                if ((i + 1) % args.save_freq == 0 or args.evaluate) and args.model_name == "PersFormer": #为什么apollo不给可视化呢？
                     gt_2d = []
                     for j in range(num_el):
                         gt_2d.append(dataset.label_to_lanes(gt_laneline_img[j]))
@@ -505,6 +506,20 @@ class Runner:
                             img_path = json_line["file_path"]
                             img_name = os.path.basename(img_path)
                             img_name_all.append(img_name)
+                        if args.dataset_name == 'apollo':
+                            # with open(json_file, 'r') as file:
+                            #     file_lines = [line for line in file]
+                            #     json_line = json.loads(file_lines[0])
+                            # img_path = json_line["file_path"]
+                            # img_name = os.path.basename(img_path)
+                            # img_name_all.append(img_name)
+                            # 1. 获取父目录名
+                            parent_folder = os.path.basename(os.path.dirname(json_file))  # 得到 "00"
+                            # 2. 获取文件名（不包含扩展名）
+                            file_name = os.path.splitext(os.path.basename(json_file))[0]    # 得到 "0000414"
+                            # 3. 拼接父目录与文件名
+                            img_name = parent_folder + file_name  # 得到 "000000414"
+                            img_name_all.append(img_name)
                         elif args.dataset_name == 'once':
                             with open(json_file, 'r') as file:
                                 file_lines = [line for line in file]
@@ -522,7 +537,8 @@ class Runner:
 
 
                     # For the purpose of vis positive anchors
-                    if vis and (i + 1) % args.save_freq == 0 and args.dataset_name != 'apollo':
+                    # if vis and (i + 1) % args.save_freq == 0 and args.dataset_name != 'apollo':
+                    if vis and (i + 1) % args.save_freq == 0:
                         anchors_positives = model.module.laneatt_head.anchors_to_lanes(loss_att_dict['anchors_positives'])
                         vs_saver.save_result_new(dataset, 'valid', epoch, idx,
                                                 input, gt, output_net, pred_pitch, pred_hcam,
@@ -657,7 +673,7 @@ class Runner:
                 sys.stdout = Logger(os.path.join(args.save_path, 'Evaluate.txt'))
                 print("=> loading checkpoint '{}'".format(best_file_name))
             if (args.proc_id == 0) and (args.model_name == "PersFormer"):
-                model.load_state_dict(checkpoint['state_dict'])
+                model.load_state_dict(checkpoint['state_dict'])#直接读取原来的模型
             elif args.model_name == "GenLaneNet":
                 pretrained_checkpoint = torch.load(args.pretrained_feat_model)
                 model1 = self.load_my_state_dict(model1, pretrained_checkpoint['state_dict'])

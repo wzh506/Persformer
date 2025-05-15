@@ -670,8 +670,10 @@ class Visualizer:
                     if not self.no_centerline:
                         pred_anchors[:, 2*self.anchor_dim - j] = nms_1d(pred_anchors[:, 2*self.anchor_dim - j])
                         pred_anchors[:, 3*self.anchor_dim - j] = nms_1d(pred_anchors[:, 3*self.anchor_dim - j])
-
-            H_g2im, P_g2im, H_crop, H_im2ipm = dataset.transform_mats(idx[i])
+            if not 'apollo' in self.dataset_name:
+                H_g2im, P_g2im, H_crop, H_im2ipm = dataset.transform_mats(idx[i]) #对于apollo数据集
+            else:
+                H_g2im, P_g2im, H_crop, H_im2ipm = dataset.transform_mats(idx[i])
             P_gt = np.matmul(H_crop, H_g2im)
             if 'openlane' in self.dataset_name:
                 P_pred = P_gt
